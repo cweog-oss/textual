@@ -93,6 +93,13 @@ extension Text {
         text = text.customAttribute(LinkAttribute(link))
       }
 
+      // Bridge the AttributedString `customRunIdentifier` attribute through to a
+      // TextAttribute so external TextRenderers can recognize tagged runs in
+      // `Text.Layout`.
+      if let identifier = run.textual.customRunIdentifier {
+        text = text.customAttribute(CustomTextRunAttribute(identifier: identifier))
+      }
+
       return text
     }
 
