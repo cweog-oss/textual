@@ -147,6 +147,24 @@ extension TextualNamespace where Base: View {
     base.environment(\.emojiAttachmentLoader, loader)
   }
 
+  /// Registers an action to perform when an inline attachment is tapped.
+  ///
+  /// Use this modifier to respond to taps on images or other inline ``Attachment`` views
+  /// rendered inside ``InlineText`` or ``StructuredText``. The action receives the tapped
+  /// ``AnyAttachment`` and the tap location in the view's coordinate space.
+  ///
+  /// ```swift
+  /// StructuredText(markdown: "![photo](https://example.com/photo.jpg)")
+  ///   .textual.onAttachmentTap { attachment, location in
+  ///     print("Tapped attachment at", location)
+  ///   }
+  /// ```
+  public func onAttachmentTap(
+    perform action: @escaping (AnyAttachment, CGPoint) -> Void
+  ) -> some View {
+    base.environment(\.attachmentTapAction, action)
+  }
+
   /// Enables or disables text selection for ``InlineText`` and ``StructuredText``.
   @available(tvOS, unavailable)
   @available(watchOS, unavailable)
