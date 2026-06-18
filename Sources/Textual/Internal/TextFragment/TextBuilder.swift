@@ -138,7 +138,10 @@ extension AttributedStringProtocol {
 // Concatenate Text views using a balanced binary tree to keep the nesting
 // depth at O(log N). A linear reduce creates O(N) depth, which causes
 // a stack overflow in SwiftUI's recursive Text.resolve() for long runs
-// (e.g. syntax-highlighted code blocks with hundreds of tokens).
+// (e.g. syntax-highlighted code blocks with hundreds of tokens). A linear
+// reduce also flattens the run structure differently, which breaks
+// `Text.Layout`-based hit-testing for tagged/linked runs and the
+// character-range math used by text selection.
 extension Array where Element == Text {
   fileprivate func balancedConcatenation() -> Text {
     switch count {

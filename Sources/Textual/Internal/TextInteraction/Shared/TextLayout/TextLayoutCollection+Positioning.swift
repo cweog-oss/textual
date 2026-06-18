@@ -75,7 +75,23 @@
     }
 
     func localCharacterRange(at indexPath: IndexPath) -> Range<Int> {
+      // Selection state can briefly outlive the layout it was created against
+      // (SwiftUI re-resolves `Text.Layout` between a gesture and reconciliation).
+      // Treat an out-of-bounds indexPath as the start of its layout rather than
+      // trapping, so taps and selection can't crash on a stale index.
+      guard
+        layouts.indices.contains(indexPath.layout),
+        layouts[indexPath.layout].lines.indices.contains(indexPath.line)
+      else {
+        return 0..<0
+      }
       let line = layouts[indexPath.layout].lines[indexPath.line]
+      guard
+        line.runs.indices.contains(indexPath.run),
+        line.runs[indexPath.run].slices.indices.contains(indexPath.runSlice)
+      else {
+        return 0..<0
+      }
       return line.runs[indexPath.run]
         .slices[indexPath.runSlice]
         .characterRange
