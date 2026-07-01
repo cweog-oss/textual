@@ -1,6 +1,19 @@
 #if TEXTUAL_ENABLE_TEXT_SELECTION
   import SwiftUI
 
+  extension CGRect {
+    /// The rect with each component rounded to the nearest whole point. Used to compare
+    /// resolved layout geometry while ignoring sub-point anchor-resolution jitter.
+    fileprivate var rounded: CGRect {
+      CGRect(
+        x: origin.x.rounded(),
+        y: origin.y.rounded(),
+        width: size.width.rounded(),
+        height: size.height.rounded()
+      )
+    }
+  }
+
   final class LiveTextLayoutCollection: TextLayoutCollection {
     private(set) lazy var layouts: [any TextLayout] = makeLayouts()
 
@@ -13,7 +26,26 @@
     }
 
     func isEqual(to other: any TextLayoutCollection) -> Bool {
-      base == (other as? LiveTextLayoutCollection)?.base
+      guard let other = other as? LiveTextLayoutCollection else {
+        return false
+      }
+      // Compare the *resolved* layout frames rather than `base`. `base` holds
+      // `Text.Layout`/anchor values whose equality is identity-based: SwiftUI mints
+      // fresh ones on every layout pass, so `base == base` is essentially always
+      // false. That made this collection compare unequal even when the on-screen
+      // geometry was unchanged, so the model was rewritten on every render and could
+      // latch onto a transient layout published while an inline image was still
+      // settling. That left link/tag hit-testing pointing at stale geometry until a
+      // scroll forced a fresh layout pass.
+      //
+      // Frames are compared at whole-point tolerance: anchor resolution
+      // (`geometry[anchor]`) jitters by sub-point fractions between passes, and exact
+      // comparison would treat that jitter as a change — so the collection would never
+      // compare equal and the model would never settle. Rounding lets it settle on the
+      // rendered layout once geometry stops meaningfully changing.
+      let lhs = layouts.map { $0.frame.rounded }
+      let rhs = other.layouts.map { $0.frame.rounded }
+      return lhs == rhs
     }
 
     func needsPositionReconciliation(with other: any TextLayoutCollection) -> Bool {
