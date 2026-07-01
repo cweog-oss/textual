@@ -122,6 +122,8 @@
       isRightToLeft ? .rightToLeft : .leftToRight
     }
 
+    var attachment: AnyAttachment? { nil }
+
     var slices: [any Textual.TextRunSlice] {
       _slices
     }
