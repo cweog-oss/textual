@@ -13,17 +13,24 @@
   struct UIKitTextInteractionOverlay: UIViewRepresentable {
     private let model: TextSelectionModel
     private let overflowFrames: [CGRect]
+    private let attachmentTapAction: ((AnyAttachment, CGPoint) -> Void)?
 
-    init(model: TextSelectionModel, overflowFrames: [CGRect]) {
+    init(
+      model: TextSelectionModel,
+      overflowFrames: [CGRect],
+      attachmentTapAction: ((AnyAttachment, CGPoint) -> Void)?
+    ) {
       self.model = model
       self.overflowFrames = overflowFrames
+      self.attachmentTapAction = attachmentTapAction
     }
 
     func makeUIView(context: Context) -> UITextInteractionView {
       UITextInteractionView(
         model: model,
         exclusionRects: overflowFrames,
-        openURL: context.environment.openURL
+        openURL: context.environment.openURL,
+        attachmentTapAction: attachmentTapAction
       )
     }
 
@@ -31,6 +38,7 @@
       uiView.model = model
       uiView.exclusionRects = overflowFrames
       uiView.openURL = context.environment.openURL
+      uiView.attachmentTapAction = attachmentTapAction
     }
   }
 #endif

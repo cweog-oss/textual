@@ -20,6 +20,7 @@
     var model: TextSelectionModel
     var exclusionRects: [CGRect]
     var openURL: OpenURLAction
+    var attachmentTapAction: ((AnyAttachment, CGPoint) -> Void)?
 
     weak var inputDelegate: (any UITextInputDelegate)?
 
@@ -31,11 +32,13 @@
     init(
       model: TextSelectionModel,
       exclusionRects: [CGRect],
-      openURL: OpenURLAction
+      openURL: OpenURLAction,
+      attachmentTapAction: ((AnyAttachment, CGPoint) -> Void)? = nil
     ) {
       self.model = model
       self.exclusionRects = exclusionRects
       self.openURL = openURL
+      self.attachmentTapAction = attachmentTapAction
       self.selectionInteraction = UITextInteraction(for: .nonEditable)
 
       super.init(frame: .zero)
@@ -109,11 +112,15 @@
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
       let location = gesture.location(in: self)
-      guard let url = model.url(for: location) else {
+      if let url = model.url(for: location) {
+        openURL(url)
+      } else if let (attachment, point) = model.attachment(for: location),
+        let attachmentTapAction
+      {
+        attachmentTapAction(attachment, point)
+      } else {
         model.selectedRange = nil
-        return
       }
-      openURL(url)
     }
 
     @objc private func share(_ sender: Any?) {
