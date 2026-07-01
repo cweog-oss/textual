@@ -24,11 +24,7 @@ struct TextSelectionInteraction: ViewModifier {
       if textSelection.allowsSelection {
         content
           .overlayTextLayoutCollection { layoutCollection in
-            Color.clear
-              .onChange(of: AnyTextLayoutCollection(layoutCollection), initial: true) {
-                model.setCoordinator(coordinator)
-                model.setLayoutCollection(layoutCollection)
-              }
+            modelUpdater(for: layoutCollection)
           }
           .modifier(PlatformTextSelectionInteraction(model: model))
       } else {
@@ -38,6 +34,29 @@ struct TextSelectionInteraction: ViewModifier {
       content
     #endif
   }
+
+  #if TEXTUAL_ENABLE_TEXT_SELECTION
+    // Pushes the live layout collection into the model. On iOS this uses a representable
+    // whose `updateUIView` runs on every graph update — reliable, unlike `onChange(of:)`
+    // inside a preference/GeometryReader closure, which can miss updates and leave the
+    // model holding an intermediate layout. Other platforms fall back to `onChange`.
+    @ViewBuilder
+    private func modelUpdater(for layoutCollection: any TextLayoutCollection) -> some View {
+      #if canImport(UIKit)
+        TextLayoutModelUpdater(
+          model: model,
+          coordinator: coordinator,
+          layoutCollection: layoutCollection
+        )
+      #else
+        Color.clear
+          .onChange(of: AnyTextLayoutCollection(layoutCollection), initial: true) {
+            model.setCoordinator(coordinator)
+            model.setLayoutCollection(layoutCollection)
+          }
+      #endif
+    }
+  #endif
 }
 
 #if TEXTUAL_ENABLE_TEXT_SELECTION

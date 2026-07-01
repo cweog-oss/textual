@@ -14,6 +14,7 @@
 
   struct UIKitTextSelectionInteraction: ViewModifier {
     private let model: TextSelectionModel
+    @Environment(\.attachmentTapAction) private var attachmentTapAction
 
     init(model: TextSelectionModel) {
       self.model = model
@@ -21,7 +22,11 @@
 
     func body(content: Content) -> some View {
       content.overlayPreferenceValue(OverflowFrameKey.self) { frames in
-        UIKitTextInteractionOverlay(model: model, overflowFrames: frames)
+        UIKitTextInteractionOverlay(
+          model: model,
+          overflowFrames: frames,
+          attachmentTapAction: attachmentTapAction
+        )
       }
     }
   }

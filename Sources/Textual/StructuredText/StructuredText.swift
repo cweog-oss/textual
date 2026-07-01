@@ -103,6 +103,7 @@ import SwiftUI
 /// ``MarkupParser`` implementation.
 public struct StructuredText: View {
   @State private var attributedString = AttributedString()
+  @State private var containerSize: CGSize?
 
   private let markup: String
   private let parser: any MarkupParser
@@ -122,6 +123,14 @@ public struct StructuredText: View {
         .modifier(TextSelectionCoordination())
     }
     .coordinateSpace(.textContainer)
+    // Measure the container once and publish it so descendant `TextFragment`s can size
+    // attachments correctly on their first build — even fragments that are recreated
+    // when an inline image finishes loading and reflows the document. Without this, a
+    // freshly built fragment lays images out at their full intrinsic size before its own
+    // geometry is measured, and the selection model can latch onto that oversized
+    // transient, breaking link/tag hit-testing until a scroll forces a relayout.
+    .onGeometryChange(for: CGSize.self, of: \.size) { containerSize = $0 }
+    .environment(\.resolvedTextContainerSize, containerSize)
     .onChange(of: markup, initial: true) {
       markupDidChange(markup)
     }

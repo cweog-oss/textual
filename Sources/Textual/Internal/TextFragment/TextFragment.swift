@@ -27,7 +27,9 @@ import SwiftUI
 
 struct TextFragment<Content: AttributedStringProtocol>: View {
   @Environment(\.textEnvironment) private var textEnvironment
+  @Environment(\.resolvedTextContainerSize) private var resolvedTextContainerSize
   @State private var textBuilder: TextBuilder?
+  @State private var containerSize: CGSize?
 
   private let content: Content
 
@@ -39,11 +41,30 @@ struct TextFragment<Content: AttributedStringProtocol>: View {
     text
       .customAttribute(TextFragmentAttribute())
       .onGeometryChange(for: CGSize?.self, of: \.textContainerSize) { size in
+        containerSize = size
         guard let size, let textBuilder else { return }
         textBuilder.sizeChanged(size, environment: textEnvironment)
       }
       .onChange(of: content, initial: true) { _, newValue in
-        self.textBuilder = TextBuilder(newValue, environment: textEnvironment)
+        let builder = TextBuilder(newValue, environment: textEnvironment)
+        // Size the freshly built text to the container immediately when the width is
+        // known. Otherwise the builder lays attachments out with an `.unspecified`
+        // proposal — which for images means their full intrinsic size — and publishes
+        // that oversized layout before `onGeometryChange` corrects it. The selection
+        // model can latch onto that transient as the last write, leaving link/tag
+        // hit-testing pointing at stale geometry until a scroll forces another layout
+        // pass.
+        //
+        // `containerSize` (this fragment's own measurement) is preferred, but it is
+        // `nil` for a fragment that was just (re)created — which happens whenever an
+        // inline image finishes loading and reflows the document into a different
+        // block structure, giving fragments new identities. `resolvedTextContainerSize`
+        // comes from an ancestor (`StructuredText`) that measures the container once,
+        // so it survives those identity changes and is available on first build.
+        if let size = containerSize ?? resolvedTextContainerSize {
+          builder.sizeChanged(size, environment: textEnvironment)
+        }
+        self.textBuilder = builder
       }
       .modifier(TextSelectionBackground())
       .modifier(AttachmentOverlay(attachments: content.attachments()))
@@ -69,6 +90,16 @@ extension CoordinateSpaceProtocol where Self == NamedCoordinateSpace {
   static var textContainer: NamedCoordinateSpace {
     .named("textContainer")
   }
+}
+
+extension EnvironmentValues {
+  /// The resolved size of the text container, published by an ancestor (for example
+  /// ``StructuredText``) that measures it once.
+  ///
+  /// ``TextFragment`` uses this to size attachments on its first build when its own
+  /// geometry has not been measured yet — notably for fragments that are recreated when
+  /// an inline image finishes loading and reflows the document into a new block structure.
+  @Entry var resolvedTextContainerSize: CGSize? = nil
 }
 
 extension GeometryProxy {
